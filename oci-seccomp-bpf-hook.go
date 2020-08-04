@@ -20,10 +20,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/iovisor/gobpf/bcc"
 	spec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
+	types "github.com/seccomp/containers-golang"
 	seccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/sirupsen/logrus"
 	logrus_syslog "github.com/sirupsen/logrus/hooks/syslog"
@@ -108,9 +108,9 @@ func modprobe(module string) error {
 // detachAndTrace re-executes the current executable to "fork" in go-ish way and
 // traces the provided PID.
 func detachAndTrace() error {
-	logrus.Info("Loading kheaders module")
+	logrus.Info("Trying to load `kheaders` module")
 	if err := modprobe("kheaders"); err != nil {
-		return errors.Wrap(err, "error loading kheaders module")
+		logrus.Infof("Loading `kheaders` failed, continuing in hope kernel headers reside on disk: %v", err)
 	}
 
 	// Read the State spec from stdin and unmarshal it.
@@ -301,7 +301,7 @@ func runBPFSource(pid int, profilePath string, inputFile string) (finalErr error
 	logrus.Info("BPF progam has finished")
 
 	logrus.Info("PerfMap Stop")
-	perfMap.Stop()
+	go perfMap.Stop()
 
 	logrus.Infof("Writing seccomp profile to %q", profilePath)
 	if err := generateProfile(syscalls, profilePath, inputFile); err != nil {
